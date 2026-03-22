@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Máquina de Turing</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0a0a0a;--paper:#f5f0e8;--amber:#c8860a;--tape:#d4c9b0;--rule:#2a2a2a;--muted:#666;--bg:#1a1a1a;--fg:#e8d5a0;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-weight:300;overflow-x:hidden;}
+.prog{position:fixed;top:0;left:0;width:0%;height:3px;background:var(--amber);z-index:1000;}
+.tape-strip{background:var(--bg);padding:10px 0;overflow:hidden;border-bottom:3px solid var(--amber);}
+.tape-track{display:flex;animation:scroll 18s linear infinite;white-space:nowrap;}
+.tape-cell{display:inline-flex;align-items:center;justify-content:center;width:42px;height:32px;border-right:1px solid #333;font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--fg);flex-shrink:0;}
+.tape-cell.act{background:var(--amber);color:var(--bg);font-weight:500;}
+@keyframes scroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+header{padding:80px 60px 60px;max-width:1300px;margin:0 auto;}
+.over{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--amber);margin-bottom:24px;display:flex;align-items:center;gap:12px;}
+.over::before{content:'';display:block;width:40px;height:1px;background:var(--amber);}
+h1{font-family:'Playfair Display',serif;font-size:clamp(52px,8vw,110px);font-weight:900;line-height:.95;letter-spacing:-.02em;max-width:900px;}
+h1 em{font-style:italic;color:var(--amber);}
+.hrule{width:100%;height:1px;background:var(--rule);margin:48px 0 40px;opacity:.2;}
+.hmeta{display:flex;gap:60px;flex-wrap:wrap;}
+.mi{display:flex;flex-direction:column;gap:4px;}
+.ml{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);}
+.mv{font-size:16px;font-weight:400;}
+.hero{background:var(--bg);padding:60px;margin:0 60px;border-left:4px solid var(--amber);max-width:calc(1300px - 120px);position:relative;}
+.hero::after{content:'MÁQUINA DE TURING — DIAGRAMA ABSTRACTO';position:absolute;bottom:16px;right:24px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#444;letter-spacing:.2em;}
+.msvg{width:100%;max-width:800px;display:block;margin:0 auto;}
+nav{position:fixed;right:32px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:100;}
+.nd{width:8px;height:8px;border-radius:50%;background:var(--tape);cursor:pointer;transition:.3s;position:relative;}
+.nd:hover{background:var(--amber);transform:scale(1.3);}
+.nd.on{background:var(--amber);}
+.nd .tip{position:absolute;right:20px;top:50%;transform:translateY(-50%);background:var(--bg);color:var(--fg);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 10px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;}
+.nd:hover .tip{opacity:1;}
+@media(max-width:1100px){nav{display:none;}}
+main{max-width:1300px;margin:0 auto;padding:80px 60px;}
+.sec{display:grid;grid-template-columns:200px 1fr;gap:60px;margin-bottom:100px;opacity:0;transform:translateY(30px);transition:opacity .7s,transform .7s;}
+.sec.vis{opacity:1;transform:translateY(0);}
+.slabel{position:sticky;top:40px;height:fit-content;}
+.snum{font-family:'IBM Plex Mono',monospace;font-size:72px;font-weight:300;color:var(--tape);line-height:1;margin-bottom:8px;}
+.stitle{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);}
+.scont h2{font-family:'Playfair Display',serif;font-size:clamp(28px,3vw,42px);font-weight:700;line-height:1.2;margin-bottom:28px;letter-spacing:-.01em;}
+.scont p{font-size:17px;line-height:1.8;color:#2a2a2a;margin-bottom:20px;max-width:680px;}
+.scont p strong{font-weight:500;color:var(--ink);}
+blockquote{border-left:3px solid var(--amber);padding:24px 32px;margin:40px 0;background:rgba(200,134,10,.05);max-width:620px;}
+blockquote p{font-family:'Playfair Display',serif;font-size:20px!important;font-style:italic;line-height:1.6!important;color:var(--ink)!important;margin-bottom:12px!important;}
+blockquote cite{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);}
+.tl{position:relative;padding-left:32px;margin:40px 0;max-width:680px;}
+.tl::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:1px;background:linear-gradient(to bottom,var(--amber),transparent);}
+.ti{position:relative;margin-bottom:40px;}
+.ti::before{content:'';position:absolute;left:-36px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 4px rgba(200,134,10,.15);}
+.ty{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--amber);letter-spacing:.1em;margin-bottom:6px;}
+.tt{font-size:16px;line-height:1.7;color:#2a2a2a;}
+.tt strong{font-weight:500;color:var(--ink);}
+.cb{background:var(--bg);padding:32px;margin:32px 0;font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1.8;color:var(--fg);border-top:2px solid var(--amber);max-width:680px;position:relative;}
+.cb::before{content:attr(data-l);position:absolute;top:-12px;left:16px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;background:var(--amber);color:var(--bg);padding:2px 10px;font-weight:500;}
+.cm{color:#666;}.kw{color:#e8a82a;}.st{color:#8ec07c;}.sy{color:#fb4934;}
+.pq{font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,38px);font-weight:700;line-height:1.25;letter-spacing:-.01em;max-width:580px;margin:52px 0;position:relative;padding-top:24px;}
+.pq::before{content:'';position:absolute;top:0;left:0;width:60px;height:3px;background:var(--amber);}
+table{width:100%;max-width:680px;border-collapse:collapse;margin:32px 0;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+th{text-align:left;padding:10px 16px;background:var(--ink);color:var(--paper);font-weight:500;letter-spacing:.08em;font-size:11px;text-transform:uppercase;}
+td{padding:10px 16px;border-bottom:1px solid rgba(0,0,0,.1);}
+tr:nth-child(even) td{background:rgba(200,134,10,.04);}
+.hl td{background:rgba(200,134,10,.12);font-weight:500;}
+.port{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start;margin:40px 0;max-width:680px;}
+.pbox{background:var(--bg);aspect-ratio:3/4;overflow:hidden;}
+.pn{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;margin-bottom:6px;}
+.pd{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);letter-spacing:.1em;margin-bottom:16px;}
+.pb{font-size:14px;line-height:1.7;color:#3a3a3a;}
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);margin:40px 0;max-width:680px;}
+.li{background:var(--paper);padding:24px;}
+.lic{font-size:22px;margin-bottom:12px;}
+.lit{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;color:var(--amber);}
+.litt{font-size:13px;line-height:1.6;color:#3a3a3a;}
+footer{background:var(--bg);color:#888;padding:40px 60px;margin-top:80px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;}
+footer p{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;}
+.fl{font-family:'Playfair Display',serif;font-size:18px;color:var(--amber);font-style:italic;}
+@keyframes fu{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+header>*{opacity:0;animation:fu .8s ease forwards;}
+header .over{animation-delay:.1s;}
+header h1{animation-delay:.3s;}
+header .hrule{animation-delay:.5s;}
+header .hmeta{animation-delay:.7s;}
+.hero{opacity:0;animation:fu 1s ease .9s forwards;}
+@media(max-width:768px){header,main{padding:40px 24px;}.hero{margin:0 24px;padding:32px 24px;}.sec{grid-template-columns:1fr;gap:24px;}.snum{font-size:48px;}.port{grid-template-columns:1fr;}.lgrid{grid-template-columns:1fr;}footer{flex-direction:column;padding:32px 24px;}}
+</style>
+</head>
+<body>
+<div class="prog" id="p"></div>
+<nav>
+  <div class="nd on" onclick="go(0)"><span class="tip">Origen</span></div>
+  <div class="nd" onclick="go(1)"><span class="tip">Alan Turing</span></div>
+  <div class="nd" onclick="go(2)"><span class="tip">El Modelo</span></div>
+  <div class="nd" onclick="go(3)"><span class="tip">Funcionamiento</span></div>
+  <div class="nd" onclick="go(4)"><span class="tip">El Límite</span></div>
+  <div class="nd" onclick="go(5)"><span class="tip">Legado</span></div>
+</nav>
+<div class="tape-strip"><div class="tape-track" id="tt"></div></div>
+<header>
+  <div class="over">Historia de la Computación — 1936</div>
+  <h1>La Máquina<br>de <em>Turing</em></h1>
+  <div class="hrule"></div>
+  <div class="hmeta">
+    <div class="mi"><span class="ml">Inventor</span><span class="mv">Alan Mathison Turing</span></div>
+    <div class="mi"><span class="ml">Publicado</span><span class="mv">1936</span></div>
+    <div class="mi"><span class="ml">Disciplina</span><span class="mv">Lógica Matemática</span></div>
+    <div class="mi"><span class="ml">Impacto</span><span class="mv">Fundamento de la Computación</span></div>
+  </div>
+</header>
+<div class="hero">
+  <svg class="msvg" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+    <defs><filter id="gl"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <rect x="0" y="80" width="800" height="60" fill="#1e1e1e" rx="2"/>
+    <g font-family="IBM Plex Mono" font-size="16" text-anchor="middle">
+      <g fill="none" stroke="#333" stroke-width="1">
+        <rect x="10" y="82" width="48" height="56" rx="1"/><rect x="60" y="82" width="48" height="56" rx="1"/>
+        <rect x="110" y="82" width="48" height="56" rx="1"/><rect x="160" y="82" width="48" height="56" rx="1"/>
+        <rect x="210" y="82" width="48" height="56" rx="1"/>
+        <rect x="260" y="82" width="48" height="56" rx="1" stroke="#c8860a" stroke-width="2"/>
+        <rect x="310" y="82" width="48" height="56" rx="1"/><rect x="360" y="82" width="48" height="56" rx="1"/>
+        <rect x="410" y="82" width="48" height="56" rx="1"/><rect x="460" y="82" width="48" height="56" rx="1"/>
+        <rect x="510" y="82" width="48" height="56" rx="1"/><rect x="560" y="82" width="48" height="56" rx="1"/>
+        <rect x="610" y="82" width="48" height="56" rx="1"/><rect x="660" y="82" width="48" height="56" rx="1"/>
+        <rect x="710" y="82" width="48" height="56" rx="1"/>
+      </g>
+      <rect x="260" y="82" width="48" height="56" fill="#c8860a" fill-opacity=".2" rx="1"/>
+      <text fill="#e8d5a0" x="34" y="116">1</text><text fill="#e8d5a0" x="84" y="116">0</text>
+      <text fill="#e8d5a0" x="134" y="116">1</text><text fill="#e8d5a0" x="184" y="116">1</text>
+      <text fill="#e8d5a0" x="234" y="116">0</text>
+      <text fill="#c8860a" font-weight="bold" filter="url(#gl)" x="284" y="116">1</text>
+      <text fill="#e8d5a0" x="334" y="116">0</text><text fill="#e8d5a0" x="384" y="116">0</text>
+      <text fill="#e8d5a0" x="434" y="116">1</text><text fill="#e8d5a0" x="484" y="116">1</text>
+      <text fill="#e8d5a0" x="534" y="116">□</text><text fill="#555" x="584" y="116">□</text>
+      <text fill="#555" x="634" y="116">□</text><text fill="#555" x="684" y="116">□</text>
+      <text fill="#555" x="734" y="116">□</text>
+    </g>
+    <polygon points="284,78 274,58 294,58" fill="#c8860a"/>
+    <rect x="264" y="20" width="60" height="36" fill="#c8860a" rx="3"/>
+    <text x="294" y="43" font-family="IBM Plex Mono" font-size="11" fill="#0a0a0a" text-anchor="middle" font-weight="500">CABEZAL</text>
+    <rect x="590" y="16" width="120" height="44" fill="none" stroke="#c8860a" stroke-width="1.5" rx="2"/>
+    <text x="650" y="33" font-family="IBM Plex Mono" font-size="10" fill="#888" text-anchor="middle">ESTADO ACTUAL</text>
+    <text x="650" y="52" font-family="IBM Plex Mono" font-size="16" fill="#c8860a" text-anchor="middle" font-weight="500">q₃</text>
+    <line x1="550" y1="38" x2="590" y2="38" stroke="#444" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="400" y="172" font-family="IBM Plex Mono" font-size="10" fill="#555" text-anchor="middle" letter-spacing=".15em">CINTA INFINITA — SÍMBOLO ACTIVO RESALTADO EN ÁMBAR</text>
+  </svg>
+</div>
+<main>
+
+<section class="sec" data-s="0">
+  <div class="slabel"><div class="snum">01</div><div class="stitle">Origen</div></div>
+  <div class="scont">
+    <h2>El nacimiento de una idea que definiría una era</h2>
+    <p>En 1936, un joven matemático inglés de 24 años publicó un artículo que cambiaría para siempre la historia de las ciencias. Su título era aparentemente modesto: <strong>"On Computable Numbers, with an Application to the Entscheidungsproblem"</strong>. Dentro de sus páginas se escondía uno de los conceptos más poderosos de la historia del pensamiento: la máquina de Turing.</p>
+    <p>Este trabajo no describía ninguna máquina física. Era una construcción puramente mental, un experimento de pensamiento diseñado para explorar los límites fundamentales de lo que puede ser calculado. Y sin embargo, se convertiría en el modelo teórico sobre el cual se construiría toda la computación moderna.</p>
+    <blockquote><p>"Podemos comparar al hombre en el proceso de computar un número real con una máquina que solo es capaz de un número finito de condiciones."</p><cite>— Alan Turing, 1936</cite></blockquote>
+  </div>
+</section>
+
+<section class="sec" data-s="1">
+  <div class="slabel"><div class="snum">02</div><div class="stitle">El Creador</div></div>
+  <div class="scont">
+    <h2>Alan Mathison Turing</h2>
+    <div class="port">
+      <div class="pbox">
+        <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+          <rect width="200" height="260" fill="#111"/>
+          <ellipse cx="100" cy="95" rx="45" ry="52" fill="#2a2a2a"/>
+          <ellipse cx="100" cy="86" rx="38" ry="42" fill="#333"/>
+          <ellipse cx="87" cy="82" rx="5" ry="6" fill="#1a1a1a"/>
+          <ellipse cx="113" cy="82" rx="5" ry="6" fill="#1a1a1a"/>
+          <path d="M90 100 Q100 108 110 100" stroke="#444" stroke-width="2" fill="none"/>
+          <path d="M55 155 Q100 140 145 155 L160 260 L40 260 Z" fill="#2a2a2a"/>
+          <polygon points="100,155 93,170 100,235 107,170" fill="#c8860a" opacity=".6"/>
+          <path d="M80 145 L100 162 L120 145" fill="none" stroke="#444" stroke-width="1.5"/>
+          <g stroke="#c8860a" stroke-width=".3" opacity=".12">
+            <line x1="0" y1="0" x2="200" y2="260"/><line x1="40" y1="0" x2="200" y2="200"/>
+            <line x1="80" y1="0" x2="200" y2="140"/><line x1="200" y1="0" x2="0" y2="260"/>
+          </g>
+          <text x="100" y="250" font-family="IBM Plex Mono" font-size="8" fill="#555" text-anchor="middle">1912 — 1954</text>
+        </svg>
+      </div>
+      <div>
+        <div class="pn">Alan Turing</div>
+        <div class="pd">23 JUN 1912 — 07 JUN 1954</div>
+        <p class="pb">Matemático, lógico, criptógrafo y pionero de la ciencia computacional. Estudió en King's College, Cambridge, y Princeton. Considerado el padre de la informática teórica y la inteligencia artificial.</p>
+      </div>
+    </div>
+    <div class="tl">
+      <div class="ti"><div class="ty">1931</div><div class="tt">Ingresa al <strong>King's College, Cambridge</strong>, donde estudia matemáticas y desarrolla interés en los fundamentos lógicos del cálculo.</div></div>
+      <div class="ti"><div class="ty">1935</div><div class="tt">Elegido <strong>Fellow del King's College</strong>. Comienza a trabajar en los problemas planteados por Hilbert sobre decidibilidad matemática.</div></div>
+      <div class="ti"><div class="ty">1936</div><div class="tt">Publica <strong>"On Computable Numbers"</strong>, inventando la máquina de Turing y respondiendo negativamente al Entscheidungsproblem de Hilbert.</div></div>
+      <div class="ti"><div class="ty">1939–1945</div><div class="tt">Trabaja en <strong>Bletchley Park</strong> descifrando los códigos Enigma de la Alemania nazi, contribuyendo de forma decisiva al fin de la Segunda Guerra Mundial.</div></div>
+      <div class="ti"><div class="ty">1950</div><div class="tt">Publica <strong>"Computing Machinery and Intelligence"</strong>, proponiendo la <em>Prueba de Turing</em> para medir inteligencia en las máquinas.</div></div>
+      <div class="ti"><div class="ty">1954</div><div class="tt">Muere a los 41 años, tras ser perseguido legalmente por su homosexualidad en la Inglaterra de la época. En 2013 recibe indulto póstumo real.</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" data-s="2">
+  <div class="slabel"><div class="snum">03</div><div class="stitle">El Modelo</div></div>
+  <div class="scont">
+    <h2>Anatomía de la máquina abstracta</h2>
+    <p>La máquina de Turing es un modelo matemático que define lo que significa <strong>computar</strong>. No es un aparato físico; es una definición formal de proceso lógico. Su estructura es deceptivamente simple, pero de una potencia ilimitada.</p>
+    <div class="cb" data-l="Definición Formal">
+      <span class="cm">// Una Máquina de Turing M se define como una 7-tupla:</span><br><br>
+      M = (Q, Σ, Γ, δ, q₀, q_acc, q_rej)<br><br>
+      <span class="kw">donde:</span><br>
+      &nbsp;&nbsp;Q &nbsp;&nbsp;&nbsp; = <span class="st">conjunto finito de estados</span><br>
+      &nbsp;&nbsp;Σ &nbsp;&nbsp;&nbsp; = <span class="st">alfabeto de entrada (□ ∉ Σ)</span><br>
+      &nbsp;&nbsp;Γ &nbsp;&nbsp;&nbsp; = <span class="st">alfabeto de la cinta (Σ ⊆ Γ, □ ∈ Γ)</span><br>
+      &nbsp;&nbsp;δ &nbsp;&nbsp;&nbsp; = <span class="st">función de transición</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="sy">Q × Γ → Q × Γ × {L, R}</span><br>
+      &nbsp;&nbsp;q₀ &nbsp;&nbsp; = <span class="st">estado inicial</span><br>
+      &nbsp;&nbsp;q_acc = <span class="st">estado de aceptación</span><br>
+      &nbsp;&nbsp;q_rej = <span class="st">estado de rechazo</span>
+    </div>
+    <p>Los <strong>cuatro componentes esenciales</strong>: una cinta infinita dividida en celdas, un cabezal lector-escritor, un registro de estado interno, y una tabla de transiciones que determina el comportamiento en cada paso.</p>
+    <div class="pq">La máquina puede leer, escribir y moverse. Con solo eso, puede computar cualquier cosa computable.</div>
+    <table>
+      <thead><tr><th>Componente</th><th>Descripción</th><th>Propiedad</th></tr></thead>
+      <tbody>
+        <tr><td>Cinta</td><td>Memoria ilimitada en ambas direcciones</td><td>Infinita, discreta</td></tr>
+        <tr><td>Cabezal</td><td>Lee y escribe un símbolo por paso</td><td>Móvil L/R</td></tr>
+        <tr class="hl"><td>Estado</td><td>Configuración interna actual</td><td>Finito, determinista</td></tr>
+        <tr><td>Función δ</td><td>Reglas de transición</td><td>Parcial, computable</td></tr>
+        <tr><td>Símbolo □</td><td>Celda en blanco (vacía)</td><td>Estado inicial cinta</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec" data-s="3">
+  <div class="slabel"><div class="snum">04</div><div class="stitle">Funcionamiento</div></div>
+  <div class="scont">
+    <h2>Cómo ejecuta un cómputo paso a paso</h2>
+    <p>En cada paso, la máquina observa el símbolo bajo su cabezal y consulta su estado actual. La función de transición le indica tres cosas: <strong>qué símbolo escribir</strong>, <strong>hacia dónde mover el cabezal</strong> (izquierda o derecha), y <strong>a qué estado transitar</strong>.</p>
+    <div class="cb" data-l="Ejemplo: sumar 1 en binario">
+      <span class="cm">// Estado q₀: avanzar hasta el final de la cinta</span><br>
+      δ(q₀, 0) = (q₀, 0, R) &nbsp;<span class="cm">// seguir avanzando</span><br>
+      δ(q₀, 1) = (q₀, 1, R) &nbsp;<span class="cm">// seguir avanzando</span><br>
+      δ(q₀, □) = (q₁, □, L) &nbsp;<span class="cm">// al final → retroceder</span><br><br>
+      <span class="cm">// Estado q₁: sumar 1 con propagación de acarreo</span><br>
+      δ(q₁, 1) = (q₁, 0, L) &nbsp;&nbsp;<span class="cm">// acarreo: 1 → 0</span><br>
+      δ(q₁, 0) = (q_acc, 1, R) <span class="cm">// 0 → 1, terminar</span><br>
+      δ(q₁, □) = (q_acc, 1, R) <span class="cm">// overflow: escribir 1</span>
+    </div>
+    <p>Lo que hace a este modelo tan poderoso es la <strong>Tesis de Church-Turing</strong>: cualquier función que un humano pueda calcular siguiendo reglas mecánicas puede también ser calculada por una máquina de Turing. Esto convierte al modelo en la definición misma de cómputo.</p>
+    <blockquote><p>"Si alguna vez se encontrara un proceso que no pudiera ser simulado por una máquina de Turing, tendríamos que revisar nuestra comprensión de qué significa calcular."</p><cite>— Tesis de Church-Turing, 1936</cite></blockquote>
+  </div>
+</section>
+
+<section class="sec" data-s="4">
+  <div class="slabel"><div class="snum">05</div><div class="stitle">El Límite</div></div>
+  <div class="scont">
+    <h2>El Problema de Parada: los límites de lo computable</h2>
+    <p>El mayor legado matemático de Turing no fue mostrar lo que las máquinas pueden hacer, sino demostrar con rigor lo que <strong>no pueden hacer</strong>. El Problema de Parada (<em>Halting Problem</em>) es quizás el resultado más profundo de la ciencia computacional.</p>
+    <p>La pregunta es simple: <strong>¿puede existir un programa que, dada cualquier descripción de otro programa y su entrada, determine si ese programa terminará o se ejecutará indefinidamente?</strong></p>
+    <div class="pq">Turing demostró que tal programa es imposible. Existen preguntas que ninguna computadora jamás podrá responder.</div>
+    <div class="cb" data-l="Prueba por contradicción">
+      <span class="cm">// Supón que PARA(P, x) existe y retorna:</span><br>
+      <span class="cm">// true si P(x) se detiene, false si no.</span><br><br>
+      <span class="kw">def</span> PARADOJA(P):<br>
+      &nbsp;&nbsp;<span class="kw">if</span> PARA(P, P): &nbsp;<span class="cm">// si P se detiene con sí mismo</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;loop_forever() &nbsp;<span class="cm">// entonces NO nos detenemos</span><br>
+      &nbsp;&nbsp;<span class="kw">else</span>:<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> <span class="st">True</span> &nbsp;&nbsp;<span class="cm">// sino, sí nos detenemos</span><br><br>
+      <span class="cm">// PARADOJA(PARADOJA) genera una contradicción lógica.</span><br>
+      <span class="sy">// ∴ PARA no puede existir.  □</span>
+    </div>
+    <p>Esta demostración respondió negativamente al <strong>Entscheidungsproblem</strong> de Hilbert y estableció que existen límites fundamentales e infranqueables a lo que puede ser computado algorítmicamente.</p>
+  </div>
+</section>
+
+<section class="sec" data-s="5">
+  <div class="slabel"><div class="snum">06</div><div class="stitle">Legado</div></div>
+  <div class="scont">
+    <h2>El fundamento sobre el que se construyó el mundo digital</h2>
+    <p>Casi noventa años después de su publicación, el modelo de Turing sigue siendo el estándar de referencia para definir qué es un algoritmo, qué puede calcularse y qué constituye una computadora. Su influencia es omnipresente y permanente.</p>
+    <div class="lgrid">
+      <div class="li"><div class="lic">⬡</div><div class="lit">Complejidad Computacional</div><div class="litt">Las clases P, NP y la gran pregunta P=NP se definen sobre Máquinas de Turing.</div></div>
+      <div class="li"><div class="lic">◈</div><div class="lit">Lenguajes Formales</div><div class="litt">La Jerarquía de Chomsky clasifica lenguajes según el tipo de MT que los reconoce.</div></div>
+      <div class="li"><div class="lic">◉</div><div class="lit">Inteligencia Artificial</div><div class="litt">La Prueba de Turing (1950) sigue siendo referencia para evaluar comportamiento inteligente.</div></div>
+      <div class="li"><div class="lic">▣</div><div class="lit">Arquitectura Von Neumann</div><div class="litt">Los computadores modernos son implementaciones físicas del modelo abstracto de Turing.</div></div>
+      <div class="li"><div class="lic">⬟</div><div class="lit">Criptografía Moderna</div><div class="litt">Los fundamentos del cifrado actual heredan el trabajo de Turing en Bletchley Park.</div></div>
+      <div class="li"><div class="lic">◬</div><div class="lit">Premio Turing</div><div class="litt">El "Nobel de la computación", otorgado por la ACM desde 1966, lleva su nombre.</div></div>
+    </div>
+    <p>En 2013 la Reina Isabel II le otorgó un indulto póstumo. En 2021 su rostro fue estampado en el billete de £50. Pero su mayor monumento es el dispositivo desde el cual lees esto: cada ordenador, teléfono y servidor del planeta es, en esencia, una máquina de Turing hecha realidad.</p>
+    <blockquote><p>"Solo podemos ver poco del futuro, pero lo suficiente para darnos cuenta de que hay mucho por hacer."</p><cite>— Alan Turing, Computing Machinery and Intelligence, 1950</cite></blockquote>
+  </div>
+</section>
+
+</main>
+<footer>
+  <p>© Historia de la Computación · Modelo Teórico 1936</p>
+  <span class="fl">Turing</span>
+  <p>Fundamento de la Ciencia Computacional Moderna</p>
+</footer>
+<script>
+const syms=['0','1','□','0','1','1','0','1','□','1','0','0','1','□','0','1','1','0'];
+const tt=document.getElementById('tt');
+[...syms,...syms,...syms,...syms,...syms,...syms].forEach((s,i)=>{
+  const c=document.createElement('div');
+  c.className='tape-cell'+(i%7===4?' act':'');
+  c.textContent=s;tt.appendChild(c);
+});
+window.addEventListener('scroll',()=>{
+  const h=document.documentElement;
+  document.getElementById('p').style.width=(window.scrollY/(h.scrollHeight-h.clientHeight)*100)+'%';
+  updateNav();
+});
+const secs=document.querySelectorAll('.sec');
+const obs=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('vis');})},{threshold:.1});
+secs.forEach(s=>obs.observe(s));
+const dots=document.querySelectorAll('.nd');
+function updateNav(){
+  secs.forEach((s,i)=>{
+    const r=s.getBoundingClientRect();
+    if(r.top<window.innerHeight*.5&&r.bottom>0){
+      dots.forEach(d=>d.classList.remove('on'));
+      if(dots[i])dots[i].classList.add('on');
+    }
+  });
+}
+function go(i){secs[i]?.scrollIntoView({behavior:'smooth',block:'center'});}
+</script>
+</body>
+</html>
